@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>myWords</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #18181b;
+      --surface:   #27272a;
+      --surface2:  #3f3f46;
+      --border:    #3f3f46;
+      --text:      #fafafa;
+      --muted:     #71717a;
+      --accent:    #a3e635;
+      --accent-dim:#4d7c0f;
+      --danger:    #f87171;
+      --warn:      #fb923c;
+    }
+
+    body {
+      width: 340px;
+      min-height: 200px;
+      max-height: 560px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    header h1 { font-size: 14px; font-weight: 700; flex: 1; color: var(--accent); }
+    #count {
+      font-size: 11px; color: var(--muted);
+      background: var(--surface); padding: 2px 8px; border-radius: 99px;
+    }
+    #pauseBtn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      width: 30px; height: 26px;
+      font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    #pauseBtn:hover  { background: var(--surface2); }
+    #pauseBtn.paused { border-color: var(--warn); }
+
+    /* ── Manual add ── */
+    .add-row {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 6px;
+    }
+    .add-row input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 5px 10px;
+      font-size: 12px; outline: none; transition: border-color 0.15s;
+    }
+    .add-row input::placeholder { color: var(--muted); }
+    .add-row input:focus  { border-color: var(--accent); }
+    .add-row input.error  { border-color: var(--danger); }
+    #addBtn {
+      background: var(--accent-dim); border: 1px solid transparent;
+      border-radius: 6px; color: var(--accent);
+      width: 30px; height: 30px;
+      font-size: 18px; font-weight: 400; line-height: 1;
+      cursor: pointer; transition: background 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #addBtn:hover { background: #3f6212; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      padding: 7px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 6px; align-items: center;
+      min-height: 40px;
+    }
+    .btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 5px 11px;
+      font-size: 11px; cursor: pointer; white-space: nowrap; transition: background 0.15s;
+    }
+    .btn:hover      { background: var(--surface2); }
+    .btn-accent     { color: var(--accent); }
+    .btn-ghost      { background: none; border-color: transparent; color: var(--muted); }
+    .btn-ghost:hover{ background: var(--surface); color: var(--text); }
+
+    /* Normal mode: show Export+Import, hide export-mode items */
+    .export-only { display: none; }
+    #selCount-lbl { flex: 1; font-size: 11px; color: var(--muted); }
+
+    /* Export mode */
+    body.export-mode .normal-only  { display: none; }
+    body.export-mode .export-only  { display: flex; align-items: center; }
+    body.export-mode #selCount-lbl { display: block; }
+
+    /* Spacer */
+    .spacer { flex: 1; }
+
+    /* ── Word list ── */
+    #list { flex: 1; overflow-y: auto; padding: 4px 0; }
+    #list::-webkit-scrollbar       { width: 4px; }
+    #list::-webkit-scrollbar-track { background: transparent; }
+    #list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .word-item {
+      display: flex; align-items: flex-start;
+      padding: 7px 14px; gap: 8px;
+      border-radius: 4px; transition: background 0.1s;
+    }
+    .word-item:hover    { background: var(--surface); }
+    .word-item.selected { background: #1a2e05; }
+
+    /* Checkbox — gizli by default, export modunda görünür */
+    .word-cb {
+      accent-color: var(--accent); cursor: pointer;
+      flex-shrink: 0; margin-top: 2px;
+      display: none;
+    }
+    body.export-mode .word-cb { display: block; }
+
+    .word-body  { flex: 1; min-width: 0; }
+    .word-text  { font-weight: 500; letter-spacing: 0.01em; display: block; }
+    .word-sentence {
+      font-size: 10px; color: var(--muted); margin-top: 2px;
+      display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .word-meta  { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .word-date  { font-size: 10px; color: var(--muted); }
+    .delete-btn {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; padding: 2px 4px; border-radius: 3px;
+      font-size: 15px; line-height: 1; opacity: 0;
+      transition: opacity 0.15s, color 0.15s;
+    }
+    .word-item:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { color: var(--danger); }
+
+    /* ── Empty state ── */
+    #empty {
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 24px; color: var(--muted); gap: 8px; text-align: center;
+    }
+    #empty .icon { font-size: 28px; }
+    #empty p { font-size: 12px; line-height: 1.6; }
+
+    /* ── In-popup notification ── */
+    #notify {
+      position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+      background: var(--surface2); color: var(--text);
+      padding: 6px 14px; border-radius: 6px; font-size: 11px;
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    #notify.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <h1>myWords</h1>
+    <span id="count">0 words</span>
+    <button id="pauseBtn" title="Toggle auto-save">▶</button>
+  </header>
+
+  <!-- Manual add -->
+  <div class="add-row">
+    <input type="text" id="manualInput" placeholder="Add a word or phrase…" maxlength="60" />
+    <button id="addBtn" title="Add">+</button>
+  </div>
+
+  <!--
+    Toolbar — iki mod:
+    Normal:  [spacer] [Export] [Import]
+    Export:  [☐ all] [N selected] [TXT] [CSV] [✕]
+  -->
+  <div class="toolbar">
+    <!-- Normal mod -->
+    <div class="spacer normal-only"></div>
+    <button class="btn btn-accent normal-only" id="exportBtn">Export</button>
+    <button class="btn btn-accent normal-only" id="importBtn">Import</button>
+
+    <!-- Export mod -->
+    <label class="export-only" style="gap:5px; cursor:pointer; font-size:11px; color:var(--muted);">
+      <input type="checkbox" id="selectAll" style="accent-color:var(--accent);" />
+      All
+    </label>
+    <span id="selCount-lbl" class="export-only"></span>
+    <button class="btn btn-accent export-only" id="exportTxt">TXT</button>
+    <button class="btn btn-accent export-only" id="exportCsv">CSV</button>
+    <button class="btn btn-ghost  export-only" id="cancelExport" title="Cancel">✕</button>
+
+    <!-- gizli file input -->
+    <input type="file" id="importFile" accept=".txt,.csv" style="display:none" />
+  </div>
+
+  <!-- Word list -->
+  <div id="list">
+    <div id="empty">
+      <span class="icon">✨</span>
+      <p>No words yet.<br/>Double-click a word on any page to save it.</p>
+    </div>
+  </div>
+
+  <div id="notify"></div>
+
+  <script type="module" src="./popup.ts"></script>
+</body>
+</html>
