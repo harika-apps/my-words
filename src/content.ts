@@ -146,22 +146,48 @@ function trySave(entry: VocabEntry): void {
 
 function showToast(word: string): void {
   document.getElementById(TOAST_ID)?.remove()
+
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const bg   = dark ? 'rgba(38, 38, 44, 0.92)' : 'rgba(255, 255, 255, 0.92)'
+  const fg   = dark ? '#f2f2f7'                 : '#1c1c1e'
+  const border = dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)'
+  const shadow = dark
+    ? '0 8px 24px rgba(0,0,0,0.5), inset 0 0 0 0.5px rgba(255,255,255,0.07)'
+    : '0 8px 24px rgba(0,0,0,0.12), inset 0 0 0 0.5px rgba(255,255,255,0.8)'
+
   const toast = document.createElement('div')
   toast.id = TOAST_ID
   toast.textContent = `✓  ${word}`
+
   Object.assign(toast.style, {
-    position: 'fixed', bottom: '24px', right: '24px',
-    background: '#18181b', color: '#a3e635',
-    padding: '9px 18px', borderRadius: '8px',
-    fontSize: '13px', fontFamily: 'system-ui, sans-serif',
-    fontWeight: '500', letterSpacing: '0.02em',
-    zIndex: '2147483647', boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-    transition: 'opacity 0.25s ease', opacity: '1',
-    pointerEvents: 'none', userSelect: 'none',
+    position:       'fixed',
+    bottom:         '20px',
+    right:          '20px',
+    background:     bg,
+    color:          fg,
+    border:         `1px solid ${border}`,
+    padding:        '8px 16px',
+    borderRadius:   '99px',
+    fontSize:       '12.5px',
+    fontFamily:     '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    fontWeight:     '500',
+    letterSpacing:  '0.01em',
+    zIndex:         '2147483647',
+    boxShadow:      shadow,
+    backdropFilter: 'blur(12px)',
+    webkitBackdropFilter: 'blur(12px)',
+    transition:     'opacity 0.25s ease, transform 0.25s ease',
+    opacity:        '1',
+    transform:      'translateY(0)',
+    pointerEvents:  'none',
+    userSelect:     'none',
   } as Partial<CSSStyleDeclaration>)
+
   document.body.appendChild(toast)
+
   setTimeout(() => {
-    toast.style.opacity = '0'
+    toast.style.opacity   = '0'
+    toast.style.transform = 'translateY(4px)'
     setTimeout(() => toast.remove(), 280)
   }, TOAST_DURATION)
 }
