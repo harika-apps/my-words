@@ -211,7 +211,7 @@ function exportAs(format: 'txt' | 'csv'): void {
     ext     = 'csv'
   }
 
-  download(content, mime, `mywords-${dateStamp()}.${ext}`)
+  download(content, mime, `wordbook-${dateStamp()}.${ext}`)
   notify(`Exported ${entries.length} word${entries.length !== 1 ? 's' : ''} as .${ext}`)
   exitExportMode()
 }

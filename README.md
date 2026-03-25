@@ -1,4 +1,4 @@
-# myWords
+# 📖 wordbook
 
 > A minimal Chrome extension for saving unknown words and phrases while reading — without interrupting your flow.
 
@@ -11,7 +11,7 @@ Double-click any word, or drag-select a two-word phrase, and it's instantly adde
 - **Double-click** a word → saved immediately
 - **Drag-select** a two-word phrase (*look up*, *as well*, *break down*) → saved immediately
 - **Manual add** — type any word or phrase directly into the popup
-- **Pause / Resume** — temporarily disable auto-save; while paused, use right-click → *Save to myWords* instead
+- **Pause / Resume** — temporarily disable auto-save; while paused, use right-click → *Save to my wordbook* instead
 - **Select & export** — check individual words, then export only the selected ones
 - **Export as TXT or CSV** — plain word list or full metadata (word, date, page title, URL)
 - Duplicate detection — same entry is never saved twice
@@ -22,18 +22,18 @@ Double-click any word, or drag-select a two-word phrase, and it's instantly adde
 
 ## Usage
 
-| Action | How |
-|---|---|
-| Save a word | Double-click it on any page |
-| Save a two-word phrase | Drag-select it on any page |
-| Add manually | Open popup → type in the top input → Enter or Add |
-| Pause auto-save | Open popup → click **▶ Active** → turns **⏸ Paused** |
-| Save while paused | Select text → right-click → **Save to myWords** |
-| Select words to export | Check the checkboxes next to words |
-| Export | Click **Export** → choose **TXT** or **CSV** |
+| Action | How                                                      |
+|---|----------------------------------------------------------|
+| Save a word | Double-click it on any page                              |
+| Save a two-word phrase | Drag-select it on any page                               |
+| Add manually | Open popup → type in the top input → Enter or Add        |
+| Pause auto-save | Open popup → click **▶ Active** → turns **⏸ Paused**     |
+| Save while paused | Select text → right-click → **Save to my wordbook**       |
+| Select words to export | Check the checkboxes next to words                       |
+| Export | Click **Export** → choose **TXT** or **CSV**             |
 | Export selected only | Select words → click **Export selected** → choose format |
-| Delete a word | Hover the word → click **×** |
-| Search | Type in the search box — filters in real time |
+| Delete a word | Hover the word → click **×**                             |
+| Search | Type in the search box — filters in real time            |
 
 ---
 
@@ -60,8 +60,8 @@ look up,"2025-03-24T10:01:00.000Z","BBC News","https://..."
 ## Installation (local)
 
 ```bash
-git clone https://github.com/your-username/mywords.git
-cd mywords
+git clone https://github.com/harika-apps/my-words.git
+cd my-words
 npm install
 npm run build
 ```
@@ -71,7 +71,7 @@ In Chrome:
 1. Go to `chrome://extensions/`
 2. Enable **Developer mode** (top right toggle)
 3. Click **Load unpacked** → select the `dist/` folder
-4. The **myWords** icon appears in your toolbar ✓
+4. The **wordbook** icon appears in your toolbar ✓
 
 ---
 
@@ -117,7 +117,7 @@ Input over two words is silently ignored. Text is lowercased and stripped of pun
 
 ### Pause mode
 
-Pause state is stored in `chrome.storage.local` (device-specific, not synced). The content script keeps a local `isPaused` variable that stays in sync via `chrome.storage.onChanged`. The toolbar badge shows **⏸** when paused. The right-click context menu (*Save to myWords*) is only visible when paused.
+Pause state is stored in `chrome.storage.local` (device-specific, not synced). The content script keeps a local `isPaused` variable that stays in sync via `chrome.storage.onChanged`. The toolbar badge shows **⏸** when paused. The right-click context menu (*Save to my wordbook*) is only visible when paused.
 
 ### Storage
 

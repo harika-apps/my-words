@@ -1,6 +1,6 @@
 import type { Message, VocabEntry } from './types'
 
-const TOAST_ID       = '__mywords_toast__'
+const TOAST_ID       = '__wordbook_toast__'
 const TOAST_DURATION = 1600
 
 // ─── Pause state ──────────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ function extractSentence(sel: Selection): string {
 
   const rawText = node.nodeType === Node.TEXT_NODE
     ? (node.textContent ?? '')
-    : (node instanceof Element ? node.innerText : '')
+    : (node instanceof HTMLElement ? node.innerText : '')
 
   if (!rawText) return ''
 

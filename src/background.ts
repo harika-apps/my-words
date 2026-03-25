@@ -58,11 +58,11 @@ async function setPaused(paused: boolean): Promise<void> {
 
 // ─── Context menu ─────────────────────────────────────────────────────────────
 
-const MENU_ID = 'mywords-save'
+const MENU_ID = 'wordbook-save'
 
 function createContextMenu(): void {
   chrome.contextMenus.create({
-    id: MENU_ID, title: 'Save to myWords',
+    id: MENU_ID, title: 'Save to my wordbook',
     contexts: ['selection'], visible: false,
   })
 }
