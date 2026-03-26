@@ -64,31 +64,84 @@ chrome.runtime.onMessage.addListener((msg: Message, _sender, sendResponse) => {
 // ─── Cümle çıkarma ────────────────────────────────────────────────────────────
 //
 // Strateji:
-//   1. Bilinen kısaltmalardaki noktaları geçici bir placeholder ile değiştir
-//      (a.m., Mr., e.g., U.S. gibi)
-//   2. [.!?] sınırlarına göre cümle başı/sonu bul
-//   3. Placeholder'ları geri al
-//
-// Bu sayede "The meeting is at 8 a.m. tomorrow." gibi metinlerde
-// "a.m." cümle sonu zannedilmez.
+//   1. Seçimin bulunduğu en yakın blok-seviye parent'ı bul
+//      (inline eleman içindeki seçimlerde — bold, italic, link — tam cümleye ulaş)
+//   2. Blok elemanın innerText'ini al, seçimin bu metin içindeki offset'ini hesapla
+//   3. Akıllı cümle sınırı tespiti:
+//      - ! ve ? her zaman cümle sonu
+//      - . sadece ardından boşluk + büyük harf/tırnak/sayı geliyorsa
+//        veya metnin sonundaysa cümle sonu sayılır
+//      - Böylece kısaltma, ondalık sayı, dosya adı vb. cümle kesmez
 
-const PLACEHOLDER = '\x00'
+const BLOCK_TAGS = new Set([
+  'P','DIV','LI','TD','TH','BLOCKQUOTE','ARTICLE','SECTION',
+  'H1','H2','H3','H4','H5','H6','FIGCAPTION','DD','DT','PRE','BODY',
+])
 
-// Kısaltma pattern'leri — sıra önemli (uzundan kısaya)
-const ABBREV_RE = /\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|Rev|Gen|Sgt|Cpl|Pvt|St|vs|etc|e\.g|i\.e|viz|cf|approx|est|dept|fig|no|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec|a\.m|p\.m|A\.M|P\.M|U\.S|U\.K|U\.S\.A|E\.U)\./g
-
-function maskAbbreviations(text: string): string {
-  return text
-    // "Mr." "Dr." "a.m." gibi bilinen kısaltmalar
-    .replace(ABBREV_RE, (match) => match.replace(/\./g, PLACEHOLDER))
-    // Tek büyük harf + nokta: "U.S.A." → her nokta mask'le
-    .replace(/\b([A-Z])\./g, '$1' + PLACEHOLDER)
-    // Rakam + nokta (liste numaraları): "1. First item"
-    .replace(/(\d)\./g, '$1' + PLACEHOLDER)
+/** Seçim node'undan yukarı çıkarak en yakın blok-seviye parent'ı bulur */
+function closestBlock(node: Node): HTMLElement {
+  let cur: Node | null = node.nodeType === Node.TEXT_NODE ? node.parentElement : node
+  while (cur && cur instanceof HTMLElement) {
+    if (BLOCK_TAGS.has(cur.tagName)) return cur
+    cur = cur.parentElement
+  }
+  return document.body
 }
 
-function unmaskAbbreviations(text: string): string {
-  return text.split(PLACEHOLDER).join('.')
+/** Blok eleman içinde, belirli bir text node + offset'in düz metin karşılığını bulur */
+function flatOffset(block: HTMLElement, targetNode: Node, localOffset: number): number {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  let total = 0
+  while (walker.nextNode()) {
+    if (walker.currentNode === targetNode) return total + localOffset
+    total += (walker.currentNode.textContent ?? '').length
+  }
+  return total + localOffset
+}
+
+/** Nokta karakterinin gerçek bir cümle sonu olup olmadığını kontrol eder */
+function isDotSentenceEnd(text: string, dotIndex: number): boolean {
+  // Metnin sonundaki nokta → cümle sonu
+  if (dotIndex >= text.length - 1) return true
+
+  const after = text[dotIndex + 1]
+
+  // Noktadan hemen sonra boşluk yoksa → cümle sonu değil (3.5, file.txt vb.)
+  if (after !== ' ' && after !== '\n' && after !== '\t' && after !== '\r') return false
+
+  // Noktadan sonra boşluk var — boşluktan sonraki ilk non-space karaktere bak
+  let i = dotIndex + 2
+  while (i < text.length && /\s/.test(text[i])) i++
+
+  // Boşluktan sonra metin bitti → cümle sonu
+  if (i >= text.length) return true
+
+  const firstChar = text[i]
+
+  // Büyük harf, tırnak, parantez, rakam → yeni cümle başlıyor
+  if (/[A-Z\u00C0-\u00DC"\u201C\u2018\u00AB([]/.test(firstChar)) return true
+
+  // Noktadan önceki kelimeye bak — tek harf veya bilinen kısaltma mı?
+  let ws = dotIndex - 1
+  while (ws >= 0 && text[ws] !== ' ' && text[ws] !== '\n') ws--
+  const wordBefore = text.slice(ws + 1, dotIndex)
+
+  // Tek harf (A. B. gibi initials) veya bilinen kısaltma → cümle sonu değil
+  if (wordBefore.length <= 1) return false
+  if (/^(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|Rev|Gen|Sgt|Cpl|Pvt|St|vs|etc|approx|est|dept|fig|no|vol|ch|sec|ed|trans|illus|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/i.test(wordBefore)) return false
+
+  // Noktalı kısaltma (e.g, i.e, a.m, p.m, U.S, vb.)
+  if (/^([a-zA-Z]\.)+[a-zA-Z]$/.test(wordBefore)) return false
+
+  // Küçük harfle devam ediyorsa → muhtemelen kısaltma, cümle sonu değil
+  return false
+}
+
+function isSentenceEnd(text: string, index: number): boolean {
+  const ch = text[index]
+  if (ch === '!' || ch === '?') return true
+  if (ch === '.') return isDotSentenceEnd(text, index)
+  return false
 }
 
 function extractSentence(sel: Selection): string {
@@ -97,25 +150,27 @@ function extractSentence(sel: Selection): string {
   const range = sel.getRangeAt(0)
   const node  = range.startContainer
 
-  const rawText = node.nodeType === Node.TEXT_NODE
-    ? (node.textContent ?? '')
-    : (node instanceof HTMLElement ? node.innerText : '')
+  // Blok-seviye parent'ı bul ve tam metni al
+  const block   = closestBlock(node)
+  const rawText = block.innerText ?? ''
 
   if (!rawText) return ''
 
-  const masked = maskAbbreviations(rawText)
-  const offset = range.startOffset
+  // Seçimin blok metin içindeki offset'ini hesapla
+  const offset = node.nodeType === Node.TEXT_NODE
+    ? flatOffset(block, node, range.startOffset)
+    : range.startOffset
 
   // Geriye: cümle başı
   let start = offset
-  while (start > 0 && !/[.!?]/.test(masked[start - 1])) start--
+  while (start > 0 && !isSentenceEnd(rawText, start - 1)) start--
 
   // İleriye: cümle sonu
   let end = offset
-  while (end < masked.length && !/[.!?]/.test(masked[end])) end++
-  if (end < masked.length) end++
+  while (end < rawText.length && !isSentenceEnd(rawText, end)) end++
+  if (end < rawText.length) end++ // sonu dahil et
 
-  const sentence = unmaskAbbreviations(masked.slice(start, end))
+  const sentence = rawText.slice(start, end)
   return sentence.trim().replace(/\s+/g, ' ').slice(0, 300)
 }
 
